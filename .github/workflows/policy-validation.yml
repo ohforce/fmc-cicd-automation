@@ -1,8 +1,6 @@
-name: Run FMC Policy Audit
-run: |
-    cd src
-    python policy_audit.py
-env:
-    FMC_HOST: ${{ secrets.FMC_HOST }}
-    FMC_USERNAME: ${{ secrets.FMC_USERNAME }}
-    FMC_PASSWORD: ${{ secrets.FMC_PASSWORD }}
+      - name: Run FMC Policy Audit
+        env:
+          FMC_HOST: ${{ secrets.FMC_HOST }}
+          FMC_USERNAME: ${{ secrets.FMC_USERNAME }}
+          FMC_PASSWORD: ${{ secrets.FMC_PASSWORD }}
+        run: python src/policy_audit.py
