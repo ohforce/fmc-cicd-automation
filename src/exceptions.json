@@ -1,0 +1,14 @@
+# exceptions.json (프로젝트 루트에 생성)
+
+{
+  "exceptions": [
+    {
+      "rule_name": "Approved Vendor Access",
+      "policy_name": "Corporate Policy",
+      "finding": "ANY_SOURCE_ALLOW",
+      "reason": "Approved by Security Team",
+      "expiration": "2026-12-31",
+      "approved_by": "security-team@mindray.com"
+    }
+  ]
+}
