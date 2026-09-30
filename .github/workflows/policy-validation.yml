@@ -1,33 +1,31 @@
-name: Run FMC Policy Audit
+name: FMC Policy Validation
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  audit:
+  validate:
     runs-on: ubuntu-latest
 
-    env:
-      FMC_HOST: ${{ secrets.FMC_HOST }}
-      FMC_USERNAME: ${{ secrets.FMC_USERNAME }}
-      FMC_PASSWORD: ${{ secrets.FMC_PASSWORD }}
-
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set Up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install requests python-dotenv
+          pip install pytest requests python-dotenv
 
-      - name: Run FMC Policy Audit
+      - name: Run Unit Tests
         run: |
-          cd src
-          python policy_audit.py
+          python -m pytest -v
