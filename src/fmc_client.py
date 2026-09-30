@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-FMC_HOST = os.getenv("FMC_HOST")
-FMC_USERNAME = os.getenv("FMC_USERNAME")
-FMC_PASSWORD = os.getenv("FMC_PASSWORD")
+FMC_HOST = os.getenv("FMC_HOST", "").strip()
+FMC_USERNAME = os.getenv("FMC_USERNAME", "").strip()
+FMC_PASSWORD = os.getenv("FMC_PASSWORD", "").strip()
 
 BASE_URL = f"https://{FMC_HOST}"
 
