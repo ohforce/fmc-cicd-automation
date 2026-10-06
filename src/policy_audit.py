@@ -8,6 +8,33 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+def is_unrestricted(field_dict):
+    if not field_dict or not isinstance(field_dict, dict):
+        return True
+    
+    any_flag = field_dict.get("any")
+    if any_flag is True:
+        return True
+        
+    objects = field_dict.get("objects") or []
+    literals = field_dict.get("literals") or []
+    zones = field_dict.get("zones") or []
+    networks = field_dict.get("networks") or []
+    
+    if len(objects) == 0 and len(literals) == 0 and len(networks) == 0:
+        return True
+    
+    if len(objects) == 0 and len(literals) == 0 and len(networks) == 0 and len(zones) > 0:
+        return True  # Zone 만 있어도 Any 로 간주
+    
+    all_items = objects + networks
+    for obj in all_items:
+        if isinstance(obj, dict):
+            obj_name = str(obj.get("name", "")).lower()
+            if "any" in obj_name:
+                return True
+                
+    return False
 
 def load_exceptions():
     """예외 목록 로드"""
@@ -29,7 +56,6 @@ def is_exception(policy_name, rule_name, finding, exceptions):
             and exc.get("rule_name") == rule_name
             and exc.get("finding") == finding
         ):
-            # 만료일 확인
             expiration = exc.get("expiration")
             if expiration:
                 try:
@@ -57,7 +83,6 @@ def audit_policies():
     all_findings = []
     exceptions = load_exceptions()
     
-    # 카운터
     total_rules = 0
     passed_rules = 0
     warnings = 0
@@ -68,16 +93,17 @@ def audit_policies():
         policy_id = policy.get("id")
         print(f"\n🔍 Auditing policy: {policy_name}")
         
-        # 정책 내  가져오기
         rules_endpoint = f"{endpoint}/{policy_id}/accessrules"
-        rules_response = get_api_data(rules_endpoint, params={"limit": 1000})
+        # 💡 핵심 수정: expanded=true를 추가하여 액션, 소스/목적지/포트 상세 정보를 가져옴
+        rules_response = get_api_data(rules_endpoint, params={"limit": 1000, "expanded": "true"})
         
         for rule in rules_response.get("items", []):
             rule_name = rule.get("name", "Unnamed Rule")
             rule_id = rule.get("id")
             total_rules += 1
             
-            #  정보 추출
+            ports_data = rule.get("destinationPorts") or rule.get("ports") or {}
+            
             rule_info = {
                 "policy_name": policy_name,
                 "policy_id": policy_id,
@@ -85,15 +111,15 @@ def audit_policies():
                 "rule_id": rule_id,
                 "action": rule.get("action", "N/A"),
                 "enabled": rule.get("enabled", False),
-                "source_any": rule.get("sourceNetworks", {}).get("any", False),
-                "destination_any": rule.get("destinationNetworks", {}).get("any", False),
-                "service_any": rule.get("ports", {}).get("any", False),
+                "source_any": is_unrestricted(rule.get("sourceNetworks")),
+                "destination_any": is_unrestricted(rule.get("destinationNetworks")),
+                "service_any": is_unrestricted(ports_data),
             }
             
-            # 소스/목적지/서비스 정보
+            # 소스/목적지/서비스 문자열 정보 추출
             source_nets = rule.get("sourceNetworks", {}).get("objects", [])
             dest_nets = rule.get("destinationNetworks", {}).get("objects", [])
-            services = rule.get("ports", {}).get("objects", [])
+            services = ports_data.get("objects", [])
             
             rule_info["source"] = ", ".join([s.get("name", "Any") for s in source_nets]) or "Any"
             rule_info["destination"] = ", ".join([d.get("name", "Any") for d in dest_nets]) or "Any"
@@ -102,12 +128,10 @@ def audit_policies():
             # 룰 검증
             findings = validate_rule(rule_info)
             
-            # findings 데이터 가공
             rule_has_critical = False
             rule_has_warning = False
             
             for finding in findings:
-                # 예외 확인
                 if is_exception(policy_name, rule_name, finding["finding"], exceptions):
                     print(f"  ⚪ EXCEPTED: {rule_name} - {finding['finding']} (Approved)")
                     continue
@@ -140,13 +164,11 @@ def audit_policies():
                 failed_rules += 1
             elif rule_has_warning:
                 warnings += 1
-                passed_rules += 1  # Warning 은 Pass 로 카운트
+                passed_rules += 1  
     
-    # 보고서 생성 (항상)
     print(f"\n📊 Generating report with {len(all_findings)} finding(s)...")
     generate_csv_report(all_findings, "fmc_policy_report.csv")
     
-    # 요약 정보 출력
     summary = generate_summary(all_findings)
     print("\n=== SUMMARY ===")
     print(f"Total Rules: {total_rules}")
@@ -154,17 +176,12 @@ def audit_policies():
     print(f"Warnings: {warnings}")
     print(f"Failed: {failed_rules}")
     
-    # ✅ CI 결과 판단
     if failed_rules > 0:
         print("\n❌ Result: FAILED")
-        print(f"\nCritical Findings:")
-        for f in all_findings:
-            if f["severity"] == "Critical":
-                print(f"  - {f['policy_name']} / {f['rule_name']} : {f['finding']}")
-        sys.exit(1)  # ← CI 실패
+        sys.exit(1)
     else:
         print("\n✅ Result: PASSED")
-        sys.exit(0)  # ← CI 성공
+        sys.exit(0)
     
     return all_findings
 

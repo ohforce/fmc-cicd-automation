@@ -1,21 +1,30 @@
+# src/fmc_client.py
+
 import os
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-FMC_HOST = os.getenv("FMC_HOST", "").strip()
-FMC_USERNAME = os.getenv("FMC_USERNAME", "").strip()
-FMC_PASSWORD = os.getenv("FMC_PASSWORD", "").strip()
+FMC_HOST = os.getenv("FMC_HOST")
+FMC_USERNAME = os.getenv("FMC_USERNAME")
+FMC_PASSWORD = os.getenv("FMC_PASSWORD")
+
+# 디버깅: 환경 변수 확인
+if not FMC_HOST:
+    raise RuntimeError("FMC_HOST is not set in environment variables.")
 
 BASE_URL = f"https://{FMC_HOST}"
 
 session = requests.Session()
 
-# FMC 인증서 검증을 기본적으로 비활성화
+# FMC 인증서 검증 (개발 환경에서는 False, 프로덕션에서는 True + CA 인증서)
 session.verify = False
 
 def authenticate():
+    """
+    FMC 에 인증하고 토큰을 얻습니다.
+    """
     url = f"{BASE_URL}/api/fmc_platform/v1/auth/generatetoken"
 
     response = session.post(
@@ -41,6 +50,9 @@ def authenticate():
 
 
 def get_api_data(endpoint, params=None):
+    """
+    FMC API 에서 데이터를 가져옵니다.
+    """
     url = f"{BASE_URL}{endpoint}"
 
     response = session.get(
