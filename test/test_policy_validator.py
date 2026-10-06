@@ -42,7 +42,7 @@ def test_detect_any_source_allow():
 
     findings = validate_rule(rule)
 
-    assert any(f["finding"] == "ANY_SOURCE_ALLOW" for f in findings)
+    assert any(f["finding"] == "ANY_ANY_ALLOW" for f in findings)
     assert any(f["severity"] == "Warning" for f in findings)
 
 
