@@ -1,3 +1,5 @@
+# .github/workflows/policy-validation.yml
+
 name: FMC Policy Validation
 
 on:
@@ -7,7 +9,7 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch:  # 수동 실행 버튼
 
 jobs:
   validate:
@@ -30,3 +32,13 @@ jobs:
       - name: Run Unit Tests
         run: |
           python -m pytest -v
+
+      # FMC Audit 는 로컬에서 실행 (보안 이유)
+      # - name: Run FMC Policy Audit
+      #   run: |
+      #     cd src
+      #     python policy_audit.py
+      #   env:
+      #     FMC_HOST: ${{ secrets.FMC_HOST }}
+      #     FMC_USERNAME: ${{ secrets.FMC_USERNAME }}
+      #     FMC_PASSWORD: ${{ secrets.FMC_PASSWORD }}
